@@ -64,8 +64,18 @@ module Ferrum
 
         if options.url
           url = URI.join(options.url, "/json/version")
-          response = JSON.parse(::Net::HTTP.get(url))
-          self.ws_url = response["webSocketDebuggerUrl"]
+          # Create a new Net::HTTP object for the specified URI
+          http = Net::HTTP.new(url.host, url.port)
+          # Set up the request
+          request = Net::HTTP::Get.new(url)
+          # Set the Host header
+          request['host'] = "localhost"
+          response = JSON.parse(http.request(request).body)
+          # Now we have to rewrite that back to the host header.
+          self.ws_url = URI(response["webSocketDebuggerUrl"]).tap do |ws_url|
+            ws_url.host = url.host
+            ws_url.port = url.port
+          end
           parse_browser_versions
           return
         end
